@@ -6,9 +6,14 @@ from torchvision.io import read_image
 
 import os
 
+import numpy as np
+
 class CustomDataset(Dataset):
-    def __init__(self, train=True, transform=None):
-        self.X, self.y = self._extract_images(train)
+    def __init__(self, train=True, transform=None, X=None, y=None):
+        if X is None or y is None:
+            self.X, self.y = self._extract_images(train)
+        else:
+            self.X, self.y = X, y
         self.transform = transform
 
     def __len__(self):
@@ -44,8 +49,22 @@ class CustomDataset(Dataset):
     
         return X, Y
 
-def customDataloader(train=True, transform=None, batch_size=64, shuffle=True):
-    dataset = CustomDataset(train, transform)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+def customDataloader(transform=None, batch_size=64, shuffle=True):
+    dataset      = CustomDataset(train=True,  transform=None)
 
-    return dataloader
+    n              = len(dataset)
+    train_idx      = np.random.choice(range(n), size=int(n*0.85), replace=False)
+    validation_idx = set(range(n)) - set(train_idx) 
+
+    X_train, y_train = dataset[train_idx]
+    X_val, y_val     = dataset[list(validation_idx)]
+    
+    train_dataset      = CustomDataset(X=X_train, y=y_train, transform=transform)
+    validation_dataset = CustomDataset(X=X_val,   y=y_val,   transform=transform)
+    test_dataset       = CustomDataset(train=False, transform=None)
+
+    train_dataloader      = DataLoader(train_dataset,      batch_size=batch_size, shuffle=shuffle)
+    validation_dataloader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=shuffle)
+    test_dataloader       = DataLoader(test_dataset,       batch_size=batch_size, shuffle=shuffle)
+
+    return train_dataloader, validation_dataloader, test_dataloader
