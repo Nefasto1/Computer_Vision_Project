@@ -42,14 +42,14 @@ def data_epoch(model, loader, criterion, optimizer, Train=True):
             # Backward pass and optimization
             loss.backward()
             optimizer.step()
+            
+        ys += y.argmax(1).tolist()
+        y_hats += y_hat.tolist()
 
         y_hat = y_hat.argmax(1)
         y_true = y.argmax(1)
         correct_predictions += (y_hat == y_true).sum().item()
         total_samples += y_true.size(0)
-
-        ys += y.argmax(1).tolist()
-        y_hats += y_hat.tolist()
         
         running_loss += loss.item()
 
@@ -57,7 +57,7 @@ def data_epoch(model, loader, criterion, optimizer, Train=True):
     loss = running_loss / len(loader)
     acc  = correct_predictions / total_samples
 
-    return loss, acc, ys, y_hats
+    return loss, acc, ys, th.tensor(y_hats).unsqueeze(0)
 
 def train_loop(model, train_loader, test_loader, criterion, optimizer, num_epochs=10, early_stopping=False):
     train_losses     = []
@@ -97,14 +97,30 @@ def train_loop(model, train_loader, test_loader, criterion, optimizer, num_epoch
             "Train Accuracy": train_accuracies, 
             "Test Accuracy": test_accuracies}
 
-def test_model(model, test_loader, criterion):
-    with th.no_grad():
-        test_loss, test_acc, y, y_hat = data_epoch(model, test_loader, criterion, None, Train=False)
+def test_model(models, test_loader, criterion, ensemble=False):
+    test_losses = []
+    test_accs   = []
+    y_hats      = []
     
+    with th.no_grad():
+        if not ensemble:
+            models = [models]
+        for model in models:
+            test_loss, test_acc, y, y_hat = data_epoch(model, test_loader, criterion, None, Train=False)
+
+            test_losses.append(test_loss)
+            test_accs.append(test_acc)
+            y_hats.append(y_hat)
+
+    test_loss = th.tensor(test_losses).mean()
+    test_acc = th.tensor(test_accs).mean()
+
+    y_hat = th.cat(y_hats).float().mean(0).argmax(1)
+
     print(f"Test Loss: {test_loss}", f"Test Accuracy: {test_acc}", sep="\n")
 
     custom_confusion_matrix(y, y_hat)
-
+    
 def init_weights(layer):
     if isinstance(layer, th.nn.Linear) or isinstance(layer, th.nn.Conv2d):
         th.nn.init.normal_(layer.weight, mean=0, std=0.01)

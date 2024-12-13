@@ -65,6 +65,6 @@ def customDataloader(transform=None, batch_size=64, shuffle=True):
 
     train_dataloader      = DataLoader(train_dataset,      batch_size=batch_size, shuffle=shuffle)
     validation_dataloader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=shuffle)
-    test_dataloader       = DataLoader(test_dataset,       batch_size=batch_size, shuffle=shuffle)
+    test_dataloader       = DataLoader(test_dataset,       batch_size=batch_size, shuffle=False)
 
     return train_dataloader, validation_dataloader, test_dataloader
