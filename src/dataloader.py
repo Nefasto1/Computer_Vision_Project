@@ -9,7 +9,8 @@ import os
 import numpy as np
 
 class CustomDataset(Dataset):
-    def __init__(self, train=True, transform=None, X=None, y=None):
+    def __init__(self, train=True, transform=None, X=None, y=None, crop=False):
+        self.crop = crop
         if X is None or y is None:
             self.X, self.y = self._extract_images(train)
         else:
@@ -33,8 +34,11 @@ class CustomDataset(Dataset):
         
         X = th.empty(0, 1, 64, 64)
         Y = []
-        
-        anisotropic = transforms.Resize((64, 64))
+
+        if self.crop:
+            anisotropic = transforms.RandomCrop((64, 64))
+        else:
+            anisotropic = transforms.Resize((64, 64))
         
         for y in range(len(classes)):
             for image in sorted(os.listdir(f"{initial_path}/{classes[y]}")):
@@ -49,8 +53,8 @@ class CustomDataset(Dataset):
     
         return X, Y
 
-def customDataloader(transform=None, batch_size=64, shuffle=True):
-    dataset      = CustomDataset(train=True,  transform=None)
+def customDataloader(transform=[None, None], batch_size=64, shuffle=True, crop=False):
+    dataset      = CustomDataset(train=True,  transform=None, crop=crop)
 
     n              = len(dataset)
     train_idx      = np.random.choice(range(n), size=int(n*0.85), replace=False)
@@ -59,9 +63,9 @@ def customDataloader(transform=None, batch_size=64, shuffle=True):
     X_train, y_train = dataset[train_idx]
     X_val, y_val     = dataset[list(validation_idx)]
     
-    train_dataset      = CustomDataset(X=X_train, y=y_train, transform=transform)
-    validation_dataset = CustomDataset(X=X_val,   y=y_val,   transform=transform)
-    test_dataset       = CustomDataset(train=False, transform=None)
+    train_dataset      = CustomDataset(X=X_train, y=y_train, transform=transform[0], crop=crop)
+    validation_dataset = CustomDataset(X=X_val,   y=y_val,   transform=transform[0], crop=crop)
+    test_dataset       = CustomDataset(train=False, transform=transform[1])
 
     train_dataloader      = DataLoader(train_dataset,      batch_size=batch_size, shuffle=shuffle)
     validation_dataloader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=shuffle)

@@ -21,7 +21,7 @@ class EarlyStopper:
                 return True
         return False
 
-def data_epoch(model, loader, criterion, optimizer, Train=True):
+def data_epoch(model, loader, criterion, optimizer, Train=True, scheduler=None):
     model = model.to(DEVICE)
     ys     = []
     y_hats = []
@@ -60,11 +60,14 @@ def data_epoch(model, loader, criterion, optimizer, Train=True):
     loss = running_loss / len(loader)
     acc  = correct_predictions / total_samples
 
+    if scheduler:
+        scheduler.step()
+    
     model = model.cpu()
 
     return loss, acc, ys, th.tensor(y_hats).unsqueeze(0)
 
-def train_loop(model, train_loader, test_loader, criterion, optimizer, num_epochs=10, early_stopping=False):
+def train_loop(model, train_loader, test_loader, criterion, optimizer, num_epochs=10, early_stopping=False, scheduler=None):
     train_losses     = []
     test_losses      = []
     train_accuracies = []
@@ -78,11 +81,11 @@ def train_loop(model, train_loader, test_loader, criterion, optimizer, num_epoch
     for epoch in bar:
         model.train()
 
-        train_loss, train_acc, _, _ = data_epoch(model, train_loader, criterion, optimizer)
+        train_loss, train_acc, _, _ = data_epoch(model, train_loader, criterion, optimizer, scheduler=scheduler)
         
         model.eval()
         with th.no_grad():
-            test_loss, test_acc, _, _ = data_epoch(model, test_loader, criterion, optimizer, Train=False)
+            test_loss, test_acc, _, _ = data_epoch(model, test_loader, criterion, optimizer, Train=False, scheduler=scheduler)
 
         train_losses.append(train_loss)
         test_losses.append(test_loss)
@@ -103,7 +106,7 @@ def train_loop(model, train_loader, test_loader, criterion, optimizer, num_epoch
             "Train Accuracy": train_accuracies, 
             "Test Accuracy": test_accuracies}
 
-def test_model(models, test_loader, criterion, ensemble=False):
+def test_model(models, test_loader, criterion, ensemble=False, scheduler=None):
     test_losses = []
     test_accs   = []
     y_hats      = []
@@ -113,7 +116,7 @@ def test_model(models, test_loader, criterion, ensemble=False):
             models = [models]
         for model in models:
             model.eval()
-            test_loss, test_acc, y, y_hat = data_epoch(model, test_loader, criterion, None, Train=False)
+            test_loss, test_acc, y, y_hat = data_epoch(model, test_loader, criterion, None, Train=False, scheduler=scheduler)
 
             test_losses.append(test_loss)
             test_accs.append(test_acc)
