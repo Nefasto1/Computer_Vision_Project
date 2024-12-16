@@ -2,6 +2,8 @@ import torch as th
 from tqdm import trange
 from src.plots import custom_confusion_matrix
 
+DEVICE = th.device("cuda" if th.cuda.is_available() else "cpu")
+
 class EarlyStopper:
     def __init__(self, patience=20, min_delta=0.1):
         self.patience = patience
@@ -20,6 +22,7 @@ class EarlyStopper:
         return False
 
 def data_epoch(model, loader, criterion, optimizer, Train=True):
+    model = model.to(DEVICE)
     ys     = []
     y_hats = []
     
@@ -28,7 +31,7 @@ def data_epoch(model, loader, criterion, optimizer, Train=True):
     total_samples = 0.0
     
     for X, y in loader:
-        X, y = X.float(), y.float()
+        X, y = X.float().to(DEVICE), y.float().to(DEVICE)
 
         if Train:
             # Zero the parameter gradients
@@ -57,6 +60,8 @@ def data_epoch(model, loader, criterion, optimizer, Train=True):
     loss = running_loss / len(loader)
     acc  = correct_predictions / total_samples
 
+    model = model.cpu()
+
     return loss, acc, ys, th.tensor(y_hats).unsqueeze(0)
 
 def train_loop(model, train_loader, test_loader, criterion, optimizer, num_epochs=10, early_stopping=False):
@@ -75,6 +80,7 @@ def train_loop(model, train_loader, test_loader, criterion, optimizer, num_epoch
 
         train_loss, train_acc, _, _ = data_epoch(model, train_loader, criterion, optimizer)
         
+        model.eval()
         with th.no_grad():
             test_loss, test_acc, _, _ = data_epoch(model, test_loader, criterion, optimizer, Train=False)
 
@@ -106,6 +112,7 @@ def test_model(models, test_loader, criterion, ensemble=False):
         if not ensemble:
             models = [models]
         for model in models:
+            model.eval()
             test_loss, test_acc, y, y_hat = data_epoch(model, test_loader, criterion, None, Train=False)
 
             test_losses.append(test_loss)
