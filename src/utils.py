@@ -5,7 +5,7 @@ from src.plots import custom_confusion_matrix
 DEVICE = th.device("cuda" if th.cuda.is_available() else "cpu")
 
 class EarlyStopper:
-    def __init__(self, patience=20, min_delta=0.1):
+    def __init__(self, patience=10, min_delta=0.1):
         self.patience = patience
         self.min_delta = min_delta
         self.counter = 0
