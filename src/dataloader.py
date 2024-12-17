@@ -35,14 +35,16 @@ class CustomDataset(Dataset):
         X = th.empty(0, 1, 64, 64)
         Y = []
 
-        if self.crop:
-            anisotropic = transforms.RandomCrop((64, 64))
-        else:
-            anisotropic = transforms.Resize((64, 64))
+        
+        crop = transforms.RandomCrop((128, 128)) if self.crop else None
+        anisotropic = transforms.Resize((64, 64))
         
         for y in range(len(classes)):
             for image in sorted(os.listdir(f"{initial_path}/{classes[y]}")):
                 x = read_image(f"{initial_path}/{classes[y]}/{image}")
+
+                if crop:
+                    x = crop(x)
                 x = anisotropic(x).unsqueeze(0)
                 
                 X = th.cat((X, x))
